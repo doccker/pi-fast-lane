@@ -1,5 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { registerPiOpenAIFast } from "./src/extension-lifecycle.ts";
+import { registerPiFastLane } from "./src/extension-lifecycle.ts";
 
 export {
   FAST_COMMAND,
@@ -8,8 +8,8 @@ export {
   FAST_STATUS_KEY,
 } from "./src/capabilities.ts";
 export type { FastExtensionCapability } from "./src/capabilities.ts";
-export { registerPiOpenAIFast } from "./src/extension-lifecycle.ts";
+export { registerPiFastLane } from "./src/extension-lifecycle.ts";
 
-export default function piOpenAIFast(pi: ExtensionAPI): void {
-  registerPiOpenAIFast(pi);
+export default function piFastLane(pi: ExtensionAPI): void {
+  registerPiFastLane(pi);
 }

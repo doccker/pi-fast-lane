@@ -29,7 +29,7 @@ test("rejects non-exact Fast Desired Handoff values with a structured warning fa
       code: "fast-handoff-invalid-value",
       name: FAST_DESIRED_HANDOFF_ENV,
       value: "true",
-      message: "Ignoring invalid PI_OPENAI_FAST_DESIRED value \"true\"; expected exact value 1 or 0.",
+      message: "Ignoring invalid PI_FAST_LANE_DESIRED value \"true\"; expected exact value 1 or 0.",
     },
   });
 

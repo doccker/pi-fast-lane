@@ -7,7 +7,7 @@ import { FAST_STATUS_KEY } from "../src/capabilities.ts";
 import { FAST_COMMAND_SAVE_FAILED_MESSAGE } from "../src/fast-command.ts";
 import { FastConfigStore } from "../src/fast-config-store.ts";
 import { FAST_DESIRED_HANDOFF_ENV } from "../src/fast-desired-handoff.ts";
-import { registerPiOpenAIFast } from "../src/extension-lifecycle.ts";
+import { registerPiFastLane } from "../src/extension-lifecycle.ts";
 
 const ANSI = {
   dim: "\x1b[38;5;8m",
@@ -21,7 +21,7 @@ const THINKING_ANSI = {
 };
 
 async function tempHome() {
-  return await mkdtemp(join(tmpdir(), "pi-openai-fast-lifecycle-"));
+  return await mkdtemp(join(tmpdir(), "pi-fast-lane-lifecycle-"));
 }
 
 function createTheme(options = {}) {
@@ -200,7 +200,7 @@ function createHarness(config, options = {}) {
     },
   };
 
-  registerPiOpenAIFast(pi, { configStore });
+  registerPiFastLane(pi, { configStore });
 
   return { commands, handlers, flags, flagValues, configStore };
 }
@@ -484,14 +484,14 @@ test("session startup routes invalid fast label color warnings to console when U
   });
 
   assert.deepEqual(warnings, [
-    `[pi-openai-fast] Ignored invalid Fast label color footer.darkFastColor at ${globalPath}: "not a color" (it is not a supported color token).`,
+    `[pi-fast-lane] Ignored invalid Fast label color footer.darkFastColor at ${globalPath}: "not a color" (it is not a supported color token).`,
   ]);
 });
 
 test("session startup routes config and handoff warnings to UI once for the current operation", async () => {
   const configWarning = {
     code: "config-supported-models-dropped",
-    path: "/work/repo/.pi/extensions/pi-openai-fast.json",
+    path: "/work/repo/.pi/extensions/pi-fast-lane.json",
     message: "Dropped invalid supported model entries.",
   };
   const harness = createHarness(
@@ -513,7 +513,7 @@ test("session startup routes config and handoff warnings to UI once for the curr
     notifications.filter(({ type }) => type === "warning").map(({ message }) => message),
     [
       "Dropped invalid supported model entries.",
-      'Ignoring invalid PI_OPENAI_FAST_DESIRED value "maybe"; expected exact value 1 or 0.',
+      'Ignoring invalid PI_FAST_LANE_DESIRED value "maybe"; expected exact value 1 or 0.',
     ],
   );
 });
@@ -521,7 +521,7 @@ test("session startup routes config and handoff warnings to UI once for the curr
 test("session startup routes operation warnings to console when UI notifications are unavailable", async () => {
   const configWarning = {
     code: "config-supported-models-not-array",
-    path: "/work/repo/.pi/extensions/pi-openai-fast.json",
+    path: "/work/repo/.pi/extensions/pi-fast-lane.json",
     message: "Ignored non-array supportedModels.",
   };
   const harness = createHarness(
@@ -539,18 +539,18 @@ test("session startup routes operation warnings to console when UI notifications
     await emit(harness, "session_start", { type: "session_start" }, ctx);
   });
 
-  assert.deepEqual(warnings, ["[pi-openai-fast] Ignored non-array supportedModels."]);
+  assert.deepEqual(warnings, ["[pi-fast-lane] Ignored non-array supportedModels."]);
 });
 
 test("warning sink failures do not fail startup or command handling", async () => {
   const loadWarning = {
     code: "config-supported-models-all-invalid",
-    path: "/work/repo/.pi/extensions/pi-openai-fast.json",
+    path: "/work/repo/.pi/extensions/pi-fast-lane.json",
     message: "All supportedModels entries were invalid.",
   };
   const writeWarning = {
     code: "config-write-failed",
-    path: "/work/repo/.pi/extensions/pi-openai-fast.json",
+    path: "/work/repo/.pi/extensions/pi-fast-lane.json",
     message: "Could not write Fast config.",
   };
   const harness = createHarness(
@@ -575,7 +575,7 @@ test("warning sink failures do not fail startup or command handling", async () =
 test("concurrent startup and model selection share config IO while applying event-specific state", async () => {
   const loadWarning = {
     code: "config-read-failed",
-    path: "/work/repo/.pi/extensions/pi-openai-fast.json",
+    path: "/work/repo/.pi/extensions/pi-fast-lane.json",
     message: "Loaded fallback Fast config.",
   };
   const config = {
@@ -888,7 +888,7 @@ test("invalid desired handoff warns once and falls through to config-derived sta
     );
 
     const expectedWarning = {
-      message: 'Ignoring invalid PI_OPENAI_FAST_DESIRED value "true"; expected exact value 1 or 0.',
+      message: 'Ignoring invalid PI_FAST_LANE_DESIRED value "true"; expected exact value 1 or 0.',
       type: "warning",
     };
     assert.equal(nonPersistentPayload, undefined);
@@ -1352,7 +1352,7 @@ test("/fast warns when the Desired Fast State toggles but cannot be saved", asyn
 test("/fast surfaces structured config write warnings through UI without duplicate save-failure warnings", async () => {
   const writeWarning = {
     code: "config-write-failed",
-    path: "/work/repo/.pi/extensions/pi-openai-fast.json",
+    path: "/work/repo/.pi/extensions/pi-fast-lane.json",
     message: "Could not write structured Fast config warning.",
   };
   const harness = createHarness(
@@ -1381,7 +1381,7 @@ test("/fast surfaces structured config write warnings through UI without duplica
 test("/fast routes structured config write warnings to console when UI notifications are unavailable", async () => {
   const writeWarning = {
     code: "config-malformed-write-refused",
-    path: "/work/repo/.pi/extensions/pi-openai-fast.json",
+    path: "/work/repo/.pi/extensions/pi-fast-lane.json",
     message: "Could not save until the config is manually repaired.",
   };
   const harness = createHarness(
@@ -1399,7 +1399,7 @@ test("/fast routes structured config write warnings to console when UI notificat
     await harness.commands.get("fast").handler("", ctx);
   });
 
-  assert.deepEqual(warnings, ["[pi-openai-fast] Could not save until the config is manually repaired."]);
+  assert.deepEqual(warnings, ["[pi-fast-lane] Could not save until the config is manually repaired."]);
 });
 
 test("status mode publishes only active fast status and never installs a custom footer", async () => {

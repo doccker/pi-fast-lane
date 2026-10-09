@@ -1,87 +1,73 @@
-# pi-openai-fast
+# pi-fast-lane
 
-A small Pi extension that lets you turn on OpenAI Fast Mode from inside Pi.
+One `/fast` toggle for Pi that turns on the provider's fast mode for both **OpenAI** and **Anthropic Claude** models.
 
-When Fast Mode is active, the extension asks OpenAI for the `priority` service tier on supported OpenAI models and shows a simple `fast` indicator in Pi.
+- **OpenAI** models (`openai`, `openai-codex`, …): adds `service_tier: "priority"` to the request.
+- **Anthropic** models (`anthropic-messages` API): adds `speed: "fast"` and appends the `fast-mode-2026-02-01` beta. Pi's existing betas (OAuth, interleaved thinking, …) are kept.
 
-Fast Mode also follows newly launched Pi subagents, so workers, reviewers, scouts, and other child sessions can use the same Fast Mode preference automatically.
+The extension checks the current model's API and picks the right request fields automatically.
+
+> Forked from [studioarray/pi-openai-fast](https://github.com/studioarray/pi-openai-fast) (MIT). The command, footer, config, and subagent handoff behavior come from upstream. This fork adds Anthropic support.
 
 ## Install
 
 ```bash
-pi install git:github.com/studioarray/pi-openai-fast
+pi install git:github.com/doccker/pi-fast-lane
 ```
+
+Do not install it alongside `pi-openai-fast`, because both register `/fast` and `--fast`. Remove that package first.
 
 ## Use it
 
-Inside Pi, run:
-
 ```text
-/fast
+/fast          # toggle Fast Mode for this session
+pi --fast      # start a run with Fast Mode requested
 ```
 
-That toggles Fast Mode on or off for your current Pi session.
+Fast Mode is only sent when both of these are true:
 
-You can also start a Pi run with Fast Mode already requested:
+1. You requested it with `/fast` or `--fast`.
+2. The current model's `provider/model` key is in `supportedModels`.
 
-```bash
-pi --fast
-```
+If you switch to an unsupported model, your preference is kept but nothing is sent until you switch back to a supported model.
+
+## Anthropic notes (read before turning it on)
+
+Facts from the [Anthropic fast mode docs](https://platform.claude.com/docs/en/build-with-claude/fast-mode) and the [Claude Code fast mode docs](https://code.claude.com/docs/en/fast-mode) (checked 2026-10-09):
+
+- **Supported models:** Claude Opus 5.5, Opus 5, and Opus 4.8. Opus 4.7 **rejects** fast requests, so it is not in the default list.
+- **Price:** 2x the standard rate on every token class. Opus 5.5 is $8/$40 per MTok; Opus 5 and 4.8 are $10/$50.
+- **Subscription (OAuth) logins:** fast mode is billed to **usage credits only**, never to your plan limits. Turn on usage credits in Claude settings first.
+- **Prompt cache:** switching speed invalidates the cache. The first fast request in a long session re-bills the whole context at fast rates. Turn it on at the start of a session when you can; `/fast` shows a reminder.
+- **Speed:** up to 2.5x higher output tokens per second. Time to first token is not improved.
+- **Availability:** first-party Anthropic API only. Not available on Bedrock, Vertex, or Foundry. Third-party relays may not forward it.
+- **Rate limits:** fast mode has its own rate limits. Pi's normal 429 retry handling applies.
+
+### Cost display
+
+Pi prices Anthropic responses at the standard rate. This extension reads the `usage.speed` value that Anthropic returns. When the server reports `"fast"`, it doubles that message's recorded cost, so the session cost matches your bill. If the server ran the request at standard speed, the cost stays at standard.
 
 ## Works with subagents
 
-Turn on `/fast` once in your parent Pi session, then launch subagents as usual. Newly started subagents inherit the same Fast Mode preference.
-
-That means a subagent can request OpenAI priority too, as long as it is using a supported model and has this extension available.
-
-For a quick sanity check, ask a subagent to print `PI_OPENAI_FAST_DESIRED`. A value of `1` means Fast Mode was handed off to that subagent.
-
-## How it behaves
-
-Fast Mode only turns on when both of these are true:
-
-1. You have requested Fast Mode with `/fast` or `--fast`.
-2. Your current Pi model is in the supported-model list.
-
-If you turn Fast Mode on while using an unsupported model, Pi keeps your preference but does not send priority requests until you switch to a supported model.
-
-By default, `/fast` is session-only. If you want Pi to remember your choice between runs, enable persistence in the config below.
-
-## Supported models
-
-Fast Mode is currently supported by these Pi model keys:
-
-```json
-[
-  "openai/gpt-5.4",
-  "openai/gpt-5.5",
-  "openai-codex/gpt-5.4",
-  "openai-codex/gpt-5.5"
-]
-```
-
-You can change this list in your config. Model names must match Pi's `provider/model` key exactly.
+Turn on `/fast` in the parent session, then launch subagents. Subagents started after that inherit the preference through `PI_FAST_LANE_DESIRED=1`, as long as they use a supported model and have this extension installed. Each fast subagent is billed at fast rates.
 
 ## Configure it
 
-Config files can live in either place:
-
-- Global: `~/.pi/agent/extensions/pi-openai-fast.json`
-- Project: `.pi/extensions/pi-openai-fast.json`
-
-Project config overrides global config.
-
-Example config:
+- Global: `~/.pi/agent/extensions/pi-fast-lane.json`
+- Project: `.pi/extensions/pi-fast-lane.json` (overrides the global file)
 
 ```json
 {
-  "persistState": true,
-  "desiredActive": true,
+  "persistState": false,
+  "desiredActive": false,
   "supportedModels": [
     "openai/gpt-5.4",
     "openai/gpt-5.5",
     "openai-codex/gpt-5.4",
-    "openai-codex/gpt-5.5"
+    "openai-codex/gpt-5.5",
+    "anthropic/claude-opus-5-5",
+    "anthropic/claude-opus-5",
+    "anthropic/claude-opus-4-8"
   ],
   "footer": {
     "mode": "replace"
@@ -89,21 +75,12 @@ Example config:
 }
 ```
 
-Common options:
+- `persistState`: remember `/fast` between Pi runs.
+- `desiredActive`: the saved on/off preference, used when `persistState` is `true`.
+- `supportedModels`: exact `provider/model` keys that may use Fast Mode. Setting this replaces the default list, so include every model you want, OpenAI and Anthropic alike. A custom provider (for example an Anthropic-compatible relay) works only if the upstream honors `speed` and the beta.
+- `footer.mode`: `replace` shows `fast` next to the model name (default), `status` shows a plain status indicator, and `off` hides the indicator.
 
-- `persistState`: set to `true` if `/fast` should be remembered between Pi runs.
-- `desiredActive`: the saved on/off preference used when `persistState` is `true`.
-- `supportedModels`: exact model keys that may use Fast Mode.
-- `footer.mode`:
-  - `replace` shows `fast` next to the model name in Pi's footer. This is the default.
-  - `status` leaves Pi's normal footer alone and shows a plain status indicator.
-  - `off` hides Fast Mode UI feedback. Priority requests still work when Fast Mode is active.
-
-## Customize the `fast` label color
-
-In the default `replace` footer mode, the `fast` label follows your Pi theme automatically.
-
-If you want custom colors, set one or both of these fields:
+### Custom label color
 
 ```json
 {
@@ -115,30 +92,26 @@ If you want custom colors, set one or both of these fields:
 }
 ```
 
-If a custom color is invalid or missing, Pi falls back to the theme-matched color.
+Invalid or missing colors fall back to the theme-matched color.
 
 ## Troubleshooting
 
-**I turned Fast Mode on, but I do not see `fast`.**
+**I turned Fast Mode on but do not see `fast`.** Check that the current model is in `supportedModels` and that `footer.mode` is not `off`.
 
-Check that your current model is in `supportedModels`. Also check that `footer.mode` is not set to `off`.
+**Anthropic requests fail after turning it on.** Check that the model supports fast mode (not Opus 4.7), that usage credits are enabled for subscription logins, and that you are not routed through Bedrock, Vertex, or a relay.
 
-**My `/fast` choice is not remembered after restarting Pi.**
+**How do I know a Claude response really ran fast?** The cost of that turn is doubled only when Anthropic reported `usage.speed: "fast"`.
 
-Set `"persistState": true` in your config.
+**My subagent is not using Fast Mode.** It must start after `/fast` is turned on. Ask it to print `PI_FAST_LANE_DESIRED`; `1` means the preference was inherited.
 
-**My subagent does not seem to be using Fast Mode.**
+## Development
 
-Subagents only inherit Fast Mode when they start after `/fast` is turned on. The subagent also needs to use a supported model. To debug, ask it to print `PI_OPENAI_FAST_DESIRED`; `1` means the preference was inherited.
+```bash
+npm install
+npm run check   # tsc + node --test
+```
 
-**I see a config warning.**
+## Credits
 
-Check that your JSON is valid and that every entry in `supportedModels` is an exact `provider/model` key.
-
-**Does this guarantee faster responses?**
-
-No. The extension requests OpenAI's priority service tier when possible. Actual availability, latency, and billing behavior depend on OpenAI and your account.
-
-## Reference attribution
-
-Inspired by [pi-better-openai](https://github.com/mattleong/pi-better-openai/).
+- Upstream: [studioarray/pi-openai-fast](https://github.com/studioarray/pi-openai-fast)
+- Upstream's own reference: [pi-better-openai](https://github.com/mattleong/pi-better-openai/)

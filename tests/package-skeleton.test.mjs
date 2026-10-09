@@ -51,7 +51,7 @@ test("package manifest is installable by Pi without pinning a host Pi version", 
   const pkg = await readPackageJson();
   const packageLock = await readPackageLock();
 
-  assert.equal(pkg.name, "pi-openai-fast");
+  assert.equal(pkg.name, "pi-fast-lane");
   assert.equal(pkg.type, "module");
   assert.deepEqual(pkg.pi?.extensions, ["./index.ts"]);
   assert.equal(existsSync(resolve(repoRoot, "index.ts")), true);
@@ -78,7 +78,7 @@ test("public extension surface is limited to fast mode and footer/status feedbac
   const extensionModule = await import(pathToFileURL(resolve(repoRoot, "index.ts")).href);
 
   assert.equal(typeof extensionModule.default, "function");
-  assert.equal(typeof extensionModule.registerPiOpenAIFast, "function");
+  assert.equal(typeof extensionModule.registerPiFastLane, "function");
   assert.deepEqual(extensionModule.FAST_EXTENSION_CAPABILITIES, [
     "fast-mode",
     "footer-status-feedback",

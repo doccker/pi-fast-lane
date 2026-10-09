@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { DEFAULT_FAST_CONFIG, FastConfigStore } from "../src/fast-config-store.ts";
 
 async function tempHome() {
-  return await mkdtemp(join(tmpdir(), "pi-openai-fast-"));
+  return await mkdtemp(join(tmpdir(), "pi-fast-lane-"));
 }
 
 test("default config matches the PRD config contract", () => {
@@ -18,6 +18,9 @@ test("default config matches the PRD config contract", () => {
       "openai/gpt-5.5",
       "openai-codex/gpt-5.4",
       "openai-codex/gpt-5.5",
+      "anthropic/claude-opus-5-5",
+      "anthropic/claude-opus-5",
+      "anthropic/claude-opus-4-8",
     ],
     footer: {
       mode: "replace",
@@ -30,8 +33,8 @@ test("uses the required global and project config paths", () => {
   const store = new FastConfigStore({ home: "/home/user" });
 
   assert.deepEqual(store.paths("/work/repo"), {
-    project: join("/work/repo", ".pi", "extensions", "pi-openai-fast.json"),
-    global: join("/home/user", ".pi", "agent", "extensions", "pi-openai-fast.json"),
+    project: join("/work/repo", ".pi", "extensions", "pi-fast-lane.json"),
+    global: join("/home/user", ".pi", "agent", "extensions", "pi-fast-lane.json"),
   });
 });
 

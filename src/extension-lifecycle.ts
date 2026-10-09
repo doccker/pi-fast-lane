@@ -5,6 +5,7 @@ import type {
   ExtensionContext,
   ExtensionEvent,
 } from "@earendil-works/pi-coding-agent";
+import { AnthropicFastCostTracker } from "./anthropic-fast-cost.ts";
 import { FAST_COMMAND } from "./capabilities.ts";
 import { ConfigLoadCoordinator } from "./config-load-coordination.ts";
 import { executeFastCommand, FAST_COMMAND_SAVE_FAILED_MESSAGE } from "./fast-command.ts";
@@ -18,18 +19,22 @@ import { readFastDesiredHandoff, writeFastDesiredHandoff } from "./fast-desired-
 import { FastStateEngine } from "./fast-state-engine.ts";
 import { createFastWarningCollector, deliverFastWarnings, hasConfigWriteFailureWarning } from "./fast-warnings.ts";
 import { FooterFeedback } from "./footer-feedback.ts";
-import { ServiceTierInjector } from "./service-tier-injector.ts";
+import { ANTHROPIC_MESSAGES_API, FastRequestInjector } from "./fast-request-injector.ts";
 import { isStartupFastOverrideRequested, registerStartupFastOverrideFlag } from "./startup-fast-override.ts";
 import { resolveStartupDesiredActive } from "./startup-fast-resolution.ts";
 
 type ModelSelectEvent = Extract<ExtensionEvent, { type: "model_select" }>;
 
-export interface PiOpenAIFastRuntimeOptions {
+export interface PiFastLaneRuntimeOptions {
   configStore?: FastConfigRepository;
   stateEngine?: FastStateEngine;
-  serviceTierInjector?: ServiceTierInjector;
+  fastRequestInjector?: FastRequestInjector;
   footerFeedback?: FooterFeedback;
+  anthropicFastCostTracker?: AnthropicFastCostTracker;
 }
+
+export const ANTHROPIC_FAST_CACHE_NOTICE =
+  "Anthropic fast mode on: speed changes invalidate the prompt cache, so the next request bills the full context at fast rates.";
 
 function cloneDefaultConfig(): FastConfig {
   return {
@@ -47,7 +52,7 @@ function cloneDefaultConfig(): FastConfig {
  * leaving command parsing, state derivation, config persistence, and payload
  * mutation in their own modules.
  */
-export function registerPiOpenAIFast(pi: ExtensionAPI, options: PiOpenAIFastRuntimeOptions = {}): void {
+export function registerPiFastLane(pi: ExtensionAPI, options: PiFastLaneRuntimeOptions = {}): void {
   const configStore = options.configStore ?? new FastConfigStore();
   const stateEngine =
     options.stateEngine ??
@@ -55,8 +60,9 @@ export function registerPiOpenAIFast(pi: ExtensionAPI, options: PiOpenAIFastRunt
       desiredActive: DEFAULT_FAST_CONFIG.desiredActive,
       supportedModels: DEFAULT_FAST_CONFIG.supportedModels,
     });
-  const serviceTierInjector = options.serviceTierInjector ?? new ServiceTierInjector();
+  const fastRequestInjector = options.fastRequestInjector ?? new FastRequestInjector();
   const footerFeedback = options.footerFeedback ?? new FooterFeedback();
+  const anthropicFastCostTracker = options.anthropicFastCostTracker ?? new AnthropicFastCostTracker();
 
   registerStartupFastOverrideFlag(pi);
 
@@ -155,7 +161,7 @@ export function registerPiOpenAIFast(pi: ExtensionAPI, options: PiOpenAIFastRunt
   }
 
   pi.registerCommand(FAST_COMMAND, {
-    description: "Toggle Fast Mode priority service tier",
+    description: "Toggle Fast Mode (OpenAI priority tier / Anthropic fast speed)",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       const config = await ensureConfig(ctx);
       const warningCollector = createFastWarningCollector();
@@ -185,6 +191,9 @@ export function registerPiOpenAIFast(pi: ExtensionAPI, options: PiOpenAIFastRunt
           desiredActive: result.state.desiredActive,
         });
         footerFeedback.notifyForTransition(result.transition, getNotifier(ctx.ui));
+        if (result.state.active && !result.transition.previous.active && ctx.model?.api === ANTHROPIC_MESSAGES_API) {
+          notifyUi(ctx.ui, ANTHROPIC_FAST_CACHE_NOTICE, "info");
+        }
         syncFooter(ctx);
       }
     },
@@ -215,8 +224,17 @@ export function registerPiOpenAIFast(pi: ExtensionAPI, options: PiOpenAIFastRunt
     }
   });
 
-  pi.on("before_provider_request", (event: BeforeProviderRequestEvent) => {
-    const nextPayload = serviceTierInjector.inject(event.payload, stateEngine.snapshot());
+  pi.on("before_provider_request", (event: BeforeProviderRequestEvent, ctx: ExtensionContext) => {
+    const nextPayload = fastRequestInjector.inject(event.payload, stateEngine.snapshot(), ctx?.model);
     return nextPayload === event.payload ? undefined : nextPayload;
+  });
+
+  pi.on("provider_stream_event", (event) => {
+    anthropicFastCostTracker.observeStreamEvent(event);
+  });
+
+  pi.on("message_end", (event) => {
+    const message = anthropicFastCostTracker.adjustMessage(event.message);
+    return message === undefined ? undefined : { message: message as typeof event.message };
   });
 }

@@ -1,20 +1,23 @@
 {
-  "name": "pi-openai-fast",
-  "version": "1.0.1",
-  "description": "Focused Pi extension for OpenAI Fast Mode priority service-tier requests.",
+  "name": "pi-fast-lane",
+  "version": "0.1.0",
+  "description": "One /fast toggle for Pi: OpenAI priority service tier and Anthropic Claude fast mode (speed: fast).",
   "keywords": [
+    "anthropic",
+    "claude",
     "fast",
     "openai",
     "pi",
     "pi-extension",
     "pi-package",
     "priority",
-    "service-tier"
+    "service-tier",
+    "speed"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/studioarray/pi-openai-fast.git"
+    "url": "git+https://github.com/doccker/pi-fast-lane.git"
   },
   "files": [
     "index.ts",
@@ -40,5 +43,6 @@
   "devDependencies": {
     "@types/node": "^25.9.1",
     "typescript": "^6.0.3"
-  }
+  },
+  "author": "wwj"
 }
