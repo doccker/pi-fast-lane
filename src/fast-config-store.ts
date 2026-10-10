@@ -12,10 +12,15 @@ import { isLegacyFastLabelColorLiteral, normalizeFastColorValue, resolveFastColo
 import { emitFastWarning, warnToConsole, type FastWarning } from "./fast-warnings.ts";
 
 export const DEFAULT_SUPPORTED_MODELS = [
-  "openai/gpt-5.4",
-  "openai/gpt-5.5",
-  "openai-codex/gpt-5.4",
-  "openai-codex/gpt-5.5",
+  "openai/gpt-6.1-sol",
+  "openai/gpt-6-astra",
+  "openai/gpt-6-luna",
+  "openai/gpt-5.6-sol",
+  "openai-codex/gpt-6.1-sol",
+  "openai-codex/gpt-6-sol",
+  "openai-codex/gpt-6-astra",
+  "openai-codex/gpt-6-luna",
+  "openai-codex/gpt-5.6-sol",
   "anthropic/claude-opus-5-5",
   "anthropic/claude-opus-5",
   "anthropic/claude-opus-4-8",

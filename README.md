@@ -33,6 +33,15 @@ Fast Mode is only sent when both of these are true:
 
 If you switch to an unsupported model, your preference is kept but nothing is sent until you switch back to a supported model.
 
+## OpenAI notes
+
+Facts from the [Codex speed docs](https://developers.openai.com/codex/speed), [Codex pricing](https://developers.openai.com/codex/pricing), and the [API Fast mode guide](https://developers.openai.com/api/docs/guides/priority-processing) (checked 2026-10-10):
+
+- **Request field:** `service_tier: "priority"`. The official Codex CLI sends the same value for its Fast mode, and the API accepts `priority` or `fast`.
+- **Default models:** GPT-6.1 Sol, GPT-6 Sol (Codex), GPT-6 Astra, GPT-6 Luna, and GPT-5.6 Sol. GPT-5.5 retires from Codex on 2026-10-14, so it is no longer in the default list.
+- **ChatGPT sign-in (`openai-codex`):** Fast mode uses included plan limits at 2.5x the Standard rate; purchased credits are billed at 2x.
+- **API key (`openai`):** Fast mode is billed per token at a premium; see the API pricing page for current rates.
+
 ## Anthropic notes (read before turning it on)
 
 Facts from the [Anthropic fast mode docs](https://platform.claude.com/docs/en/build-with-claude/fast-mode) and the [Claude Code fast mode docs](https://code.claude.com/docs/en/fast-mode) (checked 2026-10-09):
@@ -75,10 +84,15 @@ Turn on `/fast` in the parent session, then launch subagents. Subagents started 
   "persistState": false,
   "desiredActive": false,
   "supportedModels": [
-    "openai/gpt-5.4",
-    "openai/gpt-5.5",
-    "openai-codex/gpt-5.4",
-    "openai-codex/gpt-5.5",
+    "openai/gpt-6.1-sol",
+    "openai/gpt-6-astra",
+    "openai/gpt-6-luna",
+    "openai/gpt-5.6-sol",
+    "openai-codex/gpt-6.1-sol",
+    "openai-codex/gpt-6-sol",
+    "openai-codex/gpt-6-astra",
+    "openai-codex/gpt-6-luna",
+    "openai-codex/gpt-5.6-sol",
     "anthropic/claude-opus-5-5",
     "anthropic/claude-opus-5",
     "anthropic/claude-opus-4-8"
