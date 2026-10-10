@@ -55,7 +55,7 @@ Works with Pi's built-in Claude subscription login (`/login` → Anthropic). Not
 - Set `anthropic.fallbackOnReject` to `true` to turn Fast Mode off for the rest of the session after a rejection. The saved preference is not changed, so the next session tries fast again.
 - Other extensions that edit Anthropic requests (for example a Claude Code billing-attribution extension) can run alongside this one; Pi passes the request through each extension in turn and this extension only touches `speed` and `betas`.
 
-The rejection hint matches Pi's error text for a 4xx that mentions fast mode, speed, or usage credits. Anthropic does not document the exact wording, so other errors are shown as usual.
+Without usage credits, Anthropic answers a fast request with `429 rate_limit_error` and the message `Usage credits are required for fast mode.` (observed 2026-10-10). This extension treats that as a rejection, not a rate limit, so with `fallbackOnReject` Pi's automatic retry goes out at standard speed. Other 4xx errors count as rejections only when they mention fast mode, speed, or usage credits; everything else is shown as usual.
 
 ### Cost display
 

@@ -14,6 +14,9 @@ import { registerPiFastLane } from "../src/extension-lifecycle.ts";
 const OPUS = { provider: "anthropic", id: "claude-opus-5-5", api: "anthropic-messages" };
 const REJECTED =
   '400 {"type":"error","error":{"type":"invalid_request_error","message":"Fast mode requires usage credits"}}';
+// Real response observed 2026-10-10 on a Claude subscription login without usage credits.
+const CREDITS_REQUIRED_429 =
+  '429 {"type":"error","error":{"type":"rate_limit_error","message":"Usage credits are required for fast mode."},"request_id":"req_x"}';
 const RATE_LIMITED = '429 {"type":"error","error":{"type":"rate_limit_error","message":"Rate limited"}}';
 const UNRELATED = '400 {"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long"}}';
 
@@ -95,6 +98,7 @@ afterEach(() => {
 
 test("classifies fast rejections and rate limits, ignores unrelated errors", () => {
   assert.equal(classifyAnthropicFastError(REJECTED), "rejected");
+  assert.equal(classifyAnthropicFastError(CREDITS_REQUIRED_429), "rejected");
   assert.equal(classifyAnthropicFastError(RATE_LIMITED), "rate-limited");
   assert.equal(classifyAnthropicFastError(UNRELATED), undefined);
   assert.equal(classifyAnthropicFastError("500 internal fast error"), undefined);
@@ -140,6 +144,20 @@ test("fallbackOnReject turns fast off for the session after a rejection", async 
   assert.equal(process.env[FAST_DESIRED_HANDOFF_ENV], "0");
   const [payload] = await sendRequest(harness, ctx);
   assert.equal(payload, undefined);
+});
+
+test("a 429 saying usage credits are required counts as a rejection and falls back", async () => {
+  const harness = createHarness({ fallbackOnReject: true });
+  const { ctx, notifications } = createContext({ oauth: true });
+  await startWithFast(harness, ctx);
+  await sendRequest(harness, ctx);
+  await failWith(harness, ctx, CREDITS_REQUIRED_429);
+
+  assert.ok(has(notifications, ANTHROPIC_FAST_REJECTED_SUBSCRIPTION_NOTICE));
+  assert.ok(!has(notifications, ANTHROPIC_FAST_RATE_LIMITED_NOTICE));
+  assert.ok(has(notifications, ANTHROPIC_FAST_FALLBACK_NOTICE));
+  const [retryPayload] = await sendRequest(harness, ctx);
+  assert.equal(retryPayload, undefined);
 });
 
 test("rate limits only warn, even with fallbackOnReject", async () => {
