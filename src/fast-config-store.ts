@@ -1,6 +1,12 @@
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import {
+  DEFAULT_ANTHROPIC_FAST_CONFIG,
+  defaultAnthropicFastConfig,
+  mergeAnthropicFastConfig,
+  type AnthropicFastConfig,
+} from "./anthropic-fast-config.ts";
 import type { FastColorResolutionResult, FastColorValue } from "./fast-colors.ts";
 import { isLegacyFastLabelColorLiteral, normalizeFastColorValue, resolveFastColorValueDetailed } from "./fast-colors.ts";
 import { emitFastWarning, warnToConsole, type FastWarning } from "./fast-warnings.ts";
@@ -29,6 +35,7 @@ export interface FastConfig {
   desiredActive: boolean;
   supportedModels: string[];
   footer: FastFooterConfig;
+  anthropic: AnthropicFastConfig;
 }
 
 export const DEFAULT_FAST_CONFIG: FastConfig = {
@@ -39,6 +46,7 @@ export const DEFAULT_FAST_CONFIG: FastConfig = {
     mode: "replace",
     vars: {},
   },
+  anthropic: { ...DEFAULT_ANTHROPIC_FAST_CONFIG },
 };
 
 export type FastConfigWarningCode = Extract<
@@ -104,6 +112,7 @@ function defaultFastConfig(): FastConfig {
       mode: DEFAULT_FAST_CONFIG.footer.mode,
       vars: { ...DEFAULT_FAST_CONFIG.footer.vars },
     },
+    anthropic: defaultAnthropicFastConfig(),
   };
 }
 
@@ -130,6 +139,7 @@ function configToRawRecord(config: FastConfig): JsonRecord {
     desiredActive: config.desiredActive,
     supportedModels: [...config.supportedModels],
     footer: footerConfigToRawRecord(config.footer),
+    anthropic: { ...config.anthropic },
   };
 }
 
@@ -374,6 +384,7 @@ function mergeKnownConfig(base: FastConfig, source: JsonRecord, warningContext?:
     ...base,
     supportedModels: [...base.supportedModels],
     footer: { ...base.footer, vars: { ...base.footer.vars } },
+    anthropic: mergeAnthropicFastConfig(base.anthropic, source.anthropic),
   };
 
   if (typeof source.persistState === "boolean") {

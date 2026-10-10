@@ -23,8 +23,12 @@
     "index.ts",
     "src/",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
   "type": "module",
   "scripts": {
     "check": "npm run typecheck && npm test",

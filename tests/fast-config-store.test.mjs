@@ -26,6 +26,9 @@ test("default config matches the PRD config contract", () => {
       mode: "replace",
       vars: {},
     },
+    anthropic: {
+      fallbackOnReject: false,
+    },
   });
 });
 
@@ -63,6 +66,7 @@ test("merges defaults before global config and project config overrides global c
       desiredActive: true,
       supportedModels: [" global/model "],
       footer: { mode: "status" },
+      anthropic: { fallbackOnReject: true },
     }),
   );
   await writeFile(
@@ -71,6 +75,7 @@ test("merges defaults before global config and project config overrides global c
       desiredActive: false,
       supportedModels: [],
       footer: { darkFastColor: "#abcdef" },
+      anthropic: { fallbackOnReject: "yes" },
     }),
   );
 
@@ -82,6 +87,9 @@ test("merges defaults before global config and project config overrides global c
       mode: "status",
       vars: {},
       darkFastColor: "#abcdef",
+    },
+    anthropic: {
+      fallbackOnReject: true,
     },
   });
 });

@@ -12,8 +12,10 @@ The extension checks the current model's API and picks the right request fields 
 ## Install
 
 ```bash
-pi install git:github.com/doccker/pi-fast-lane
+pi install npm:pi-fast-lane
 ```
+
+Pin a version with `npm:pi-fast-lane@0.2.0`. The git source (`git:github.com/doccker/pi-fast-lane@vX.Y.Z`) still works.
 
 Do not install it alongside `pi-openai-fast`, because both register `/fast` and `--fast`. Remove that package first.
 
@@ -43,6 +45,18 @@ Facts from the [Anthropic fast mode docs](https://platform.claude.com/docs/en/bu
 - **Availability:** first-party Anthropic API only. Not available on Bedrock, Vertex, or Foundry. Third-party relays may not forward it.
 - **Rate limits:** fast mode has its own rate limits. Pi's normal 429 retry handling applies.
 
+### Claude subscription (OAuth) logins
+
+Works with Pi's built-in Claude subscription login (`/login` → Anthropic). Nothing extra is needed for the request: Pi already sends the Claude Code identity (user agent, `x-app`, the `claude-code` and `oauth` betas, and the Claude Code system line), and this extension only appends the fast-mode beta and `speed: "fast"`.
+
+- When you turn on `/fast` on a subscription login, Pi shows a reminder that fast requests are billed to **usage credits**.
+- If Anthropic rejects a fast request, you get a hint instead of only the raw error. On a subscription login the hint points to usage credits.
+- If fast mode hits its own rate limit, you get a hint to run `/fast` and continue at standard speed. Fast mode stays on.
+- Set `anthropic.fallbackOnReject` to `true` to turn Fast Mode off for the rest of the session after a rejection. The saved preference is not changed, so the next session tries fast again.
+- Other extensions that edit Anthropic requests (for example a Claude Code billing-attribution extension) can run alongside this one; Pi passes the request through each extension in turn and this extension only touches `speed` and `betas`.
+
+The rejection hint matches Pi's error text for a 4xx that mentions fast mode, speed, or usage credits. Anthropic does not document the exact wording, so other errors are shown as usual.
+
 ### Cost display
 
 Pi prices Anthropic responses at the standard rate. This extension reads the `usage.speed` value that Anthropic returns. When the server reports `"fast"`, it doubles that message's recorded cost, so the session cost matches your bill. If the server ran the request at standard speed, the cost stays at standard.
@@ -71,6 +85,9 @@ Turn on `/fast` in the parent session, then launch subagents. Subagents started 
   ],
   "footer": {
     "mode": "replace"
+  },
+  "anthropic": {
+    "fallbackOnReject": false
   }
 }
 ```
@@ -78,6 +95,7 @@ Turn on `/fast` in the parent session, then launch subagents. Subagents started 
 - `persistState`: remember `/fast` between Pi runs.
 - `desiredActive`: the saved on/off preference, used when `persistState` is `true`.
 - `supportedModels`: exact `provider/model` keys that may use Fast Mode. Setting this replaces the default list, so include every model you want, OpenAI and Anthropic alike. A custom provider (for example an Anthropic-compatible relay) works only if the upstream honors `speed` and the beta.
+- `anthropic.fallbackOnReject`: turn Fast Mode off for the current session when Anthropic rejects a fast request (default `false`).
 - `footer.mode`: `replace` shows `fast` next to the model name (default), `status` shows a plain status indicator, and `off` hides the indicator.
 
 ### Custom label color
@@ -98,7 +116,7 @@ Invalid or missing colors fall back to the theme-matched color.
 
 **I turned Fast Mode on but do not see `fast`.** Check that the current model is in `supportedModels` and that `footer.mode` is not `off`.
 
-**Anthropic requests fail after turning it on.** Check that the model supports fast mode (not Opus 4.7), that usage credits are enabled for subscription logins, and that you are not routed through Bedrock, Vertex, or a relay.
+**Anthropic requests fail after turning it on.** Check that the model supports fast mode (not Opus 4.7), that usage credits are enabled for subscription logins, and that you are not routed through Bedrock, Vertex, or a relay. Run `/fast` to go back to standard speed, or set `anthropic.fallbackOnReject` to do it automatically.
 
 **How do I know a Claude response really ran fast?** The cost of that turn is doubled only when Anthropic reported `usage.speed: "fast"`.
 

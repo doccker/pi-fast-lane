@@ -29,4 +29,5 @@ test("README config example matches the code defaults", async () => {
   assert.equal(example.persistState, DEFAULT_FAST_CONFIG.persistState, "README persistState");
   assert.equal(example.desiredActive, DEFAULT_FAST_CONFIG.desiredActive, "README desiredActive");
   assert.equal(example.footer?.mode, DEFAULT_FAST_CONFIG.footer.mode, "README footer.mode");
+  assert.deepEqual(example.anthropic, DEFAULT_FAST_CONFIG.anthropic, "README anthropic section");
 });

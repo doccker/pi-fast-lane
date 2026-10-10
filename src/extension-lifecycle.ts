@@ -6,6 +6,14 @@ import type {
   ExtensionEvent,
 } from "@earendil-works/pi-coding-agent";
 import { AnthropicFastCostTracker } from "./anthropic-fast-cost.ts";
+import {
+  ANTHROPIC_FAST_CACHE_NOTICE,
+  ANTHROPIC_FAST_FALLBACK_NOTICE,
+  ANTHROPIC_FAST_SUBSCRIPTION_NOTICE,
+  anthropicFastErrorNotice,
+  classifyAnthropicFastError,
+} from "./anthropic-fast-notices.ts";
+import { defaultAnthropicFastConfig } from "./anthropic-fast-config.ts";
 import { FAST_COMMAND } from "./capabilities.ts";
 import { ConfigLoadCoordinator } from "./config-load-coordination.ts";
 import { executeFastCommand, FAST_COMMAND_SAVE_FAILED_MESSAGE } from "./fast-command.ts";
@@ -33,8 +41,28 @@ export interface PiFastLaneRuntimeOptions {
   anthropicFastCostTracker?: AnthropicFastCostTracker;
 }
 
-export const ANTHROPIC_FAST_CACHE_NOTICE =
-  "Anthropic fast mode on: speed changes invalidate the prompt cache, so the next request bills the full context at fast rates.";
+export { ANTHROPIC_FAST_CACHE_NOTICE };
+
+function isUsingSubscription(ctx: ExtensionContext): boolean {
+  const model = ctx.model;
+  const registry = ctx.modelRegistry;
+  if (!model || typeof registry?.isUsingOAuth !== "function") {
+    return false;
+  }
+  try {
+    return registry.isUsingOAuth(model);
+  } catch {
+    return false;
+  }
+}
+
+function isAnthropicErrorMessage(message: unknown): message is { errorMessage?: unknown } {
+  if (typeof message !== "object" || message === null) {
+    return false;
+  }
+  const record = message as Record<string, unknown>;
+  return record.role === "assistant" && record.api === ANTHROPIC_MESSAGES_API && record.stopReason === "error";
+}
 
 function cloneDefaultConfig(): FastConfig {
   return {
@@ -42,6 +70,7 @@ function cloneDefaultConfig(): FastConfig {
     desiredActive: DEFAULT_FAST_CONFIG.desiredActive,
     supportedModels: [...DEFAULT_FAST_CONFIG.supportedModels],
     footer: { ...DEFAULT_FAST_CONFIG.footer, vars: { ...DEFAULT_FAST_CONFIG.footer.vars } },
+    anthropic: defaultAnthropicFastConfig(),
   };
 }
 
@@ -67,6 +96,8 @@ export function registerPiFastLane(pi: ExtensionAPI, options: PiFastLaneRuntimeO
   registerStartupFastOverrideFlag(pi);
 
   const configLoadCoordinator = new ConfigLoadCoordinator(cloneDefaultConfig(), configStore);
+  // Whether the most recent provider request carried Anthropic fast mode; consumed by message_end.
+  let lastRequestWasAnthropicFast = false;
 
   function notifyUi(ui: ExtensionContext["ui"] | undefined, message: string, type: "info" | "warning" | "error"): void {
     try {
@@ -193,6 +224,9 @@ export function registerPiFastLane(pi: ExtensionAPI, options: PiFastLaneRuntimeO
         footerFeedback.notifyForTransition(result.transition, getNotifier(ctx.ui));
         if (result.state.active && !result.transition.previous.active && ctx.model?.api === ANTHROPIC_MESSAGES_API) {
           notifyUi(ctx.ui, ANTHROPIC_FAST_CACHE_NOTICE, "info");
+          if (isUsingSubscription(ctx)) {
+            notifyUi(ctx.ui, ANTHROPIC_FAST_SUBSCRIPTION_NOTICE, "info");
+          }
         }
         syncFooter(ctx);
       }
@@ -226,14 +260,44 @@ export function registerPiFastLane(pi: ExtensionAPI, options: PiFastLaneRuntimeO
 
   pi.on("before_provider_request", (event: BeforeProviderRequestEvent, ctx: ExtensionContext) => {
     const nextPayload = fastRequestInjector.inject(event.payload, stateEngine.snapshot(), ctx?.model);
+    lastRequestWasAnthropicFast = nextPayload !== event.payload && ctx?.model?.api === ANTHROPIC_MESSAGES_API;
     return nextPayload === event.payload ? undefined : nextPayload;
   });
+
+  function handleAnthropicFastError(message: unknown, ctx: ExtensionContext): void {
+    if ((message as { role?: unknown } | undefined)?.role !== "assistant") {
+      return;
+    }
+    const sentFast = lastRequestWasAnthropicFast;
+    lastRequestWasAnthropicFast = false;
+    if (!sentFast || !isAnthropicErrorMessage(message)) {
+      return;
+    }
+
+    const kind = classifyAnthropicFastError(message.errorMessage);
+    if (kind === undefined) {
+      return;
+    }
+
+    notifyUi(ctx?.ui, anthropicFastErrorNotice(kind, isUsingSubscription(ctx)), "warning");
+    if (kind !== "rejected" || configLoadCoordinator.current.anthropic?.fallbackOnReject !== true) {
+      return;
+    }
+
+    // Session-only fallback: the saved preference is left alone so the next run can try again.
+    const transition = stateEngine.transition({ desiredActive: false });
+    writeFastDesiredHandoff(false);
+    notifyUi(ctx?.ui, ANTHROPIC_FAST_FALLBACK_NOTICE, "info");
+    footerFeedback.notifyForTransition(transition, getNotifier(ctx?.ui));
+    syncFooter(ctx);
+  }
 
   pi.on("provider_stream_event", (event) => {
     anthropicFastCostTracker.observeStreamEvent(event);
   });
 
-  pi.on("message_end", (event) => {
+  pi.on("message_end", (event, ctx: ExtensionContext) => {
+    handleAnthropicFastError(event.message, ctx);
     const message = anthropicFastCostTracker.adjustMessage(event.message);
     return message === undefined ? undefined : { message: message as typeof event.message };
   });
