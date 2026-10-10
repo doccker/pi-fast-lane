@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - Claude subscription (OAuth) logins: turning on `/fast` reminds you that fast requests are billed to usage credits.
 - Clear hints when Anthropic rejects a fast request or fast mode hits its rate limit, instead of only the raw error.
