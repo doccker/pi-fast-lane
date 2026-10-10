@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.2
 
 - Default `supportedModels` updated for the current OpenAI line-up: `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6-luna`, `gpt-5.6-sol` (API) and the same plus `gpt-6-sol` (Codex). `gpt-5.4` / `gpt-5.5` are dropped (GPT-5.5 retires from Codex on 2026-10-14). The first run writes the defaults into `~/.pi/agent/extensions/pi-fast-lane.json`, so existing installs keep their old list; edit `supportedModels` there (or delete the file to regenerate it).
 - README: OpenAI notes (request field, default models, plan and credit multipliers).
