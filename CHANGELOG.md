@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.3
 
 - Codex cost display: turns sent with Fast Mode on `openai-codex` are repriced by the new `openai.codexFastCostMultiplier` (default `2.5`, the ChatGPT plan rate). The Codex backend reports `service_tier: "default"` even for Fast Mode requests, so Pi alone recorded them at the standard rate.
 
