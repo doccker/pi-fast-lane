@@ -40,7 +40,8 @@ Facts from the [Codex speed docs](https://developers.openai.com/codex/speed), [C
 - **Request field:** `service_tier: "priority"`. The official Codex CLI sends the same value for its Fast mode, and the API accepts `priority` or `fast`.
 - **Default models:** GPT-6.1 Sol, GPT-6 Sol (Codex), GPT-6 Astra, GPT-6 Luna, and GPT-5.6 Sol. GPT-5.5 retires from Codex on 2026-10-14, so it is no longer in the default list.
 - **ChatGPT sign-in (`openai-codex`):** Fast mode uses included plan limits at 2.5x the Standard rate; purchased credits are billed at 2x.
-- **API key (`openai`):** Fast mode is billed per token at a premium; see the API pricing page for current rates.
+- **API key (`openai`):** Fast mode is billed per token at a premium; see the API pricing page for current rates. This extension does not adjust `openai` costs.
+- **Codex cost display:** the Codex backend reports `service_tier: "default"` even for Fast Mode requests (observed 2026-10-10: Fast Mode streamed about 1.45x faster on `gpt-6.1-sol` but still reported `default`), so Pi prices those turns at the standard rate. This extension multiplies the recorded cost of Codex turns it sent with Fast Mode by `openai.codexFastCostMultiplier`. If a response does report `priority`, Pi has already priced it and the cost is left as is.
 
 ## Anthropic notes (read before turning it on)
 
@@ -102,6 +103,9 @@ Turn on `/fast` in the parent session, then launch subagents. Subagents started 
   },
   "anthropic": {
     "fallbackOnReject": false
+  },
+  "openai": {
+    "codexFastCostMultiplier": 2.5
   }
 }
 ```
@@ -109,6 +113,7 @@ Turn on `/fast` in the parent session, then launch subagents. Subagents started 
 - `persistState`: remember `/fast` between Pi runs.
 - `desiredActive`: the saved on/off preference, used when `persistState` is `true`.
 - `supportedModels`: exact `provider/model` keys that may use Fast Mode. Setting this replaces the default list, so include every model you want, OpenAI and Anthropic alike. A custom provider (for example an Anthropic-compatible relay) works only if the upstream honors `speed` and the beta.
+- `openai.codexFastCostMultiplier`: cost multiplier for Codex (`openai-codex`) turns sent with Fast Mode (default `2.5`, the ChatGPT plan rate). Use `2` if you pay with purchased credits, `1` to turn the correction off. Must be a number of at least 1.
 - `anthropic.fallbackOnReject`: turn Fast Mode off for the current session when Anthropic rejects a fast request (default `false`).
 - `footer.mode`: `replace` shows `fast` next to the model name (default), `status` shows a plain status indicator, and `off` hides the indicator.
 

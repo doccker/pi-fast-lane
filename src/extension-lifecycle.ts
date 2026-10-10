@@ -14,6 +14,8 @@ import {
   classifyAnthropicFastError,
 } from "./anthropic-fast-notices.ts";
 import { defaultAnthropicFastConfig } from "./anthropic-fast-config.ts";
+import { OPENAI_CODEX_RESPONSES_API, OpenAICodexFastCostTracker } from "./openai-codex-fast-cost.ts";
+import { DEFAULT_OPENAI_FAST_CONFIG, defaultOpenAIFastConfig } from "./openai-fast-config.ts";
 import { FAST_COMMAND } from "./capabilities.ts";
 import { ConfigLoadCoordinator } from "./config-load-coordination.ts";
 import { executeFastCommand, FAST_COMMAND_SAVE_FAILED_MESSAGE } from "./fast-command.ts";
@@ -39,6 +41,7 @@ export interface PiFastLaneRuntimeOptions {
   fastRequestInjector?: FastRequestInjector;
   footerFeedback?: FooterFeedback;
   anthropicFastCostTracker?: AnthropicFastCostTracker;
+  openaiCodexFastCostTracker?: OpenAICodexFastCostTracker;
 }
 
 export { ANTHROPIC_FAST_CACHE_NOTICE };
@@ -71,6 +74,7 @@ function cloneDefaultConfig(): FastConfig {
     supportedModels: [...DEFAULT_FAST_CONFIG.supportedModels],
     footer: { ...DEFAULT_FAST_CONFIG.footer, vars: { ...DEFAULT_FAST_CONFIG.footer.vars } },
     anthropic: defaultAnthropicFastConfig(),
+    openai: defaultOpenAIFastConfig(),
   };
 }
 
@@ -92,6 +96,7 @@ export function registerPiFastLane(pi: ExtensionAPI, options: PiFastLaneRuntimeO
   const fastRequestInjector = options.fastRequestInjector ?? new FastRequestInjector();
   const footerFeedback = options.footerFeedback ?? new FooterFeedback();
   const anthropicFastCostTracker = options.anthropicFastCostTracker ?? new AnthropicFastCostTracker();
+  const openaiCodexFastCostTracker = options.openaiCodexFastCostTracker ?? new OpenAICodexFastCostTracker();
 
   registerStartupFastOverrideFlag(pi);
 
@@ -260,7 +265,9 @@ export function registerPiFastLane(pi: ExtensionAPI, options: PiFastLaneRuntimeO
 
   pi.on("before_provider_request", (event: BeforeProviderRequestEvent, ctx: ExtensionContext) => {
     const nextPayload = fastRequestInjector.inject(event.payload, stateEngine.snapshot(), ctx?.model);
-    lastRequestWasAnthropicFast = nextPayload !== event.payload && ctx?.model?.api === ANTHROPIC_MESSAGES_API;
+    const injected = nextPayload !== event.payload;
+    lastRequestWasAnthropicFast = injected && ctx?.model?.api === ANTHROPIC_MESSAGES_API;
+    openaiCodexFastCostTracker.markRequest(injected && ctx?.model?.api === OPENAI_CODEX_RESPONSES_API);
     return nextPayload === event.payload ? undefined : nextPayload;
   });
 
@@ -294,11 +301,16 @@ export function registerPiFastLane(pi: ExtensionAPI, options: PiFastLaneRuntimeO
 
   pi.on("provider_stream_event", (event) => {
     anthropicFastCostTracker.observeStreamEvent(event);
+    openaiCodexFastCostTracker.observeStreamEvent(event);
   });
 
   pi.on("message_end", (event, ctx: ExtensionContext) => {
     handleAnthropicFastError(event.message, ctx);
-    const message = anthropicFastCostTracker.adjustMessage(event.message);
+    const multiplier =
+      configLoadCoordinator.current.openai?.codexFastCostMultiplier ?? DEFAULT_OPENAI_FAST_CONFIG.codexFastCostMultiplier;
+    const message =
+      anthropicFastCostTracker.adjustMessage(event.message) ??
+      openaiCodexFastCostTracker.adjustMessage(event.message, multiplier);
     return message === undefined ? undefined : { message: message as typeof event.message };
   });
 }

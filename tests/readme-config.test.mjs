@@ -30,4 +30,5 @@ test("README config example matches the code defaults", async () => {
   assert.equal(example.desiredActive, DEFAULT_FAST_CONFIG.desiredActive, "README desiredActive");
   assert.equal(example.footer?.mode, DEFAULT_FAST_CONFIG.footer.mode, "README footer.mode");
   assert.deepEqual(example.anthropic, DEFAULT_FAST_CONFIG.anthropic, "README anthropic section");
+  assert.deepEqual(example.openai, DEFAULT_FAST_CONFIG.openai, "README openai section");
 });

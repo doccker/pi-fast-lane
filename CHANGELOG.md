@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Codex cost display: turns sent with Fast Mode on `openai-codex` are repriced by the new `openai.codexFastCostMultiplier` (default `2.5`, the ChatGPT plan rate). The Codex backend reports `service_tier: "default"` even for Fast Mode requests, so Pi alone recorded them at the standard rate.
+
 ## 0.2.2
 
 - Default `supportedModels` updated for the current OpenAI line-up: `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6-luna`, `gpt-5.6-sol` (API) and the same plus `gpt-6-sol` (Codex). `gpt-5.4` / `gpt-5.5` are dropped (GPT-5.5 retires from Codex on 2026-10-14). The first run writes the defaults into `~/.pi/agent/extensions/pi-fast-lane.json`, so existing installs keep their old list; edit `supportedModels` there (or delete the file to regenerate it).

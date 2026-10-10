@@ -7,6 +7,12 @@ import {
   mergeAnthropicFastConfig,
   type AnthropicFastConfig,
 } from "./anthropic-fast-config.ts";
+import {
+  DEFAULT_OPENAI_FAST_CONFIG,
+  defaultOpenAIFastConfig,
+  mergeOpenAIFastConfig,
+  type OpenAIFastConfig,
+} from "./openai-fast-config.ts";
 import type { FastColorResolutionResult, FastColorValue } from "./fast-colors.ts";
 import { isLegacyFastLabelColorLiteral, normalizeFastColorValue, resolveFastColorValueDetailed } from "./fast-colors.ts";
 import { emitFastWarning, warnToConsole, type FastWarning } from "./fast-warnings.ts";
@@ -41,6 +47,7 @@ export interface FastConfig {
   supportedModels: string[];
   footer: FastFooterConfig;
   anthropic: AnthropicFastConfig;
+  openai: OpenAIFastConfig;
 }
 
 export const DEFAULT_FAST_CONFIG: FastConfig = {
@@ -52,6 +59,7 @@ export const DEFAULT_FAST_CONFIG: FastConfig = {
     vars: {},
   },
   anthropic: { ...DEFAULT_ANTHROPIC_FAST_CONFIG },
+  openai: { ...DEFAULT_OPENAI_FAST_CONFIG },
 };
 
 export type FastConfigWarningCode = Extract<
@@ -118,6 +126,7 @@ function defaultFastConfig(): FastConfig {
       vars: { ...DEFAULT_FAST_CONFIG.footer.vars },
     },
     anthropic: defaultAnthropicFastConfig(),
+    openai: defaultOpenAIFastConfig(),
   };
 }
 
@@ -145,6 +154,7 @@ function configToRawRecord(config: FastConfig): JsonRecord {
     supportedModels: [...config.supportedModels],
     footer: footerConfigToRawRecord(config.footer),
     anthropic: { ...config.anthropic },
+    openai: { ...config.openai },
   };
 }
 
@@ -390,6 +400,7 @@ function mergeKnownConfig(base: FastConfig, source: JsonRecord, warningContext?:
     supportedModels: [...base.supportedModels],
     footer: { ...base.footer, vars: { ...base.footer.vars } },
     anthropic: mergeAnthropicFastConfig(base.anthropic, source.anthropic),
+    openai: mergeOpenAIFastConfig(base.openai, source.openai),
   };
 
   if (typeof source.persistState === "boolean") {

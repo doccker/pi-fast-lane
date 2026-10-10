@@ -12,9 +12,9 @@ export interface ProviderStreamObservation {
   data: unknown;
 }
 
-type UnknownRecord = Record<string, unknown>;
+export type UnknownRecord = Record<string, unknown>;
 
-interface CostBreakdown {
+export interface CostBreakdown {
   input: number;
   output: number;
   cacheRead: number;
@@ -22,7 +22,7 @@ interface CostBreakdown {
   total: number;
 }
 
-function isRecord(value: unknown): value is UnknownRecord {
+export function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -30,14 +30,14 @@ function readSpeed(usage: unknown): string | undefined {
   return isRecord(usage) && typeof usage.speed === "string" ? usage.speed : undefined;
 }
 
-function isCostBreakdown(value: unknown): value is CostBreakdown {
+export function isCostBreakdown(value: unknown): value is CostBreakdown {
   return (
     isRecord(value) &&
     ["input", "output", "cacheRead", "cacheWrite", "total"].every((key) => typeof value[key] === "number")
   );
 }
 
-function multiplyCost(cost: CostBreakdown, multiplier: number): CostBreakdown {
+export function multiplyCost(cost: CostBreakdown, multiplier: number): CostBreakdown {
   const input = cost.input * multiplier;
   const output = cost.output * multiplier;
   const cacheRead = cost.cacheRead * multiplier;

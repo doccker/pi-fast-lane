@@ -34,6 +34,9 @@ test("default config matches the PRD config contract", () => {
     anthropic: {
       fallbackOnReject: false,
     },
+    openai: {
+      codexFastCostMultiplier: 2.5,
+    },
   });
 });
 
@@ -72,6 +75,7 @@ test("merges defaults before global config and project config overrides global c
       supportedModels: [" global/model "],
       footer: { mode: "status" },
       anthropic: { fallbackOnReject: true },
+      openai: { codexFastCostMultiplier: 2 },
     }),
   );
   await writeFile(
@@ -81,6 +85,7 @@ test("merges defaults before global config and project config overrides global c
       supportedModels: [],
       footer: { darkFastColor: "#abcdef" },
       anthropic: { fallbackOnReject: "yes" },
+      openai: { codexFastCostMultiplier: 0.5 },
     }),
   );
 
@@ -95,6 +100,9 @@ test("merges defaults before global config and project config overrides global c
     },
     anthropic: {
       fallbackOnReject: true,
+    },
+    openai: {
+      codexFastCostMultiplier: 2,
     },
   });
 });
