@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1
 
 - Fix: Anthropic reports missing usage credits for fast mode as `429 rate_limit_error` ("Usage credits are required for fast mode."). It is now treated as a rejection, so `anthropic.fallbackOnReject` turns fast off and Pi's automatic retry runs at standard speed, instead of retrying the same fast request until retries run out.
 

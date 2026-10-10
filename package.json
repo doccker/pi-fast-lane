@@ -1,6 +1,6 @@
 {
   "name": "pi-fast-lane",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "One /fast toggle for Pi: OpenAI priority service tier and Anthropic Claude fast mode (speed: fast).",
   "keywords": [
     "anthropic",
